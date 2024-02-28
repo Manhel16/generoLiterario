@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabla de Géneros Literarios y Novelas</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* Estilo opcional para centrar la tabla */
+    .container {
+      margin-top: 50px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Tabla de Géneros Literarios y Novelas</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Descripción Breve</th>
+          <th>Cantidad de Novelas</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- Aquí se insertarán dinámicamente los datos de la API -->
+      </tbody>
+    </table>
+
+    <!-- Nueva tabla para mostrar los detalles de las novelas -->
+    <h2>Detalles de Novelas</h2>
+    <table class="table" id="novelasTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Autor</th>
+          <th>Páginas</th>
+          <th>Año de Lanzamiento</th>
+          <th>Imagen Local</th>
+          <th>Imagen Blob</th>
+          <!-- Agrega aquí más columnas si es necesario -->
+        </tr>
+      </thead>
+      <tbody id="novelasTableBody">
+        <!-- Aquí se insertarán dinámicamente los detalles de las novelas -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- JavaScript y Fetch API para obtener los datos de la API -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const url = "http://localhost:3000/generoLiterario"; // Cambia esto por la URL de tu API
+
+      fetch(url)
+        .then((response) => response.json())
+        .then((jsonData) => {
+          if (jsonData && Array.isArray(jsonData.data)) { // Verificar si hay datos válidos en la propiedad 'data'
+            cargarDatos(jsonData.data); // Llamamos a la función cargarDatos pasando los datos obtenidos de la propiedad 'data'
+          } else {
+            console.error("Los datos obtenidos de la API no son válidos:", jsonData);
+          }
+        })
+        .catch((error) =>
+          console.error("Error al obtener datos de la API:", error)
+        );
+    });
+
+    function cargarDatos(data) {
+      const tableBody = document.getElementById("tableBody");
+      tableBody.innerHTML = "";
+
+      data.forEach((item) => {
+        const row = `
+      <tr>
+        <td>${item.nombre}</td>
+        <td>${item.descripcionBreve}</td>
+        <td>${item.novelasCount}</td>
+        <td>
+          <button class="btn btn-info" onclick="verNovelas(${item.id})">Ver Novelas</button>
+        </td>
+      </tr>
+    `;
+        tableBody.innerHTML += row;
+      });
+    }
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function verNovelas(generoId) {
+      try {
+        const response = await fetch(`http://localhost:3000/novela/genero/${generoId}`);
+        const novelas = await response.json();
+
+        const novelasTableBody = document.getElementById('novelasTableBody');
+        novelasTableBody.innerHTML = '';
+
+        novelas.forEach(async (novela) => {
+          const row = `
+        <tr>
+          <td>${novela.nombre}</td>
+          <td>${novela.autor}</td>
+          <td>${novela.paginas}</td>
+          <td>${novela.anoLanzamiento}</td>
+          <td><img src="${novela.imagen_local}" alt="Imagen Local"></td>
+<td><img src="data:image/jpeg;base64,<%= novela.imagen_blob.toString('base64') %>" alt="Imagen Blob"></td>
+          <!-- Agrega aquí más columnas si es necesario -->
+        </tr>
+      `;
+          novelasTableBody.innerHTML += row;
+
+          if (novela.imagen_blob) {
+            try {
+              // Convertir el buffer de datos en un Blob
+              const byteArray = new Uint8Array(novela.imagen_blob.data);
+              const blob = new Blob([byteArray], { type: 'image/jpeg' }); // Ajusta el tipo según el tipo de imagen
+
+              // Crear una URL para el Blob
+              const imageUrl = URL.createObjectURL(blob);
+
+              // Mostrar la imagen en la tabla
+              const imageElement = document.createElement('img');
+              imageElement.src = imageUrl;
+              document.getElementById(`imagenBlob_${novela.id}`).appendChild(imageElement);
+            } catch (error) {
+              console.error('Error al mostrar la imagen blob:', error);
+            }
+          }
+        });
+
+        // Mostrar la tabla de detalles de las novelas y ocultar la tabla de géneros literarios
+        document.getElementById('tableBody').style.display = 'none';
+        document.getElementById('novelasTable').style.display = 'block';
+      } catch (error) {
+        console.error('Error al obtener novelas del género con ID', generoId + ':', error);
+      }
+    }
+
+    // Cargar los datos al cargar la página
+    cargarDatos();
+  </script>
+</body>
+
+</html>
